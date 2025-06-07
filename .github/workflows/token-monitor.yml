@@ -1,0 +1,73 @@
+name: Monitor Token Health
+
+on:
+  schedule:
+    # Check token health weekly on Sundays at 9:00 AM Malaysia time
+    - cron: '0 1 * * 0'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  token-health:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Configure environment
+      env:
+        THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+        THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+        THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        THREADS_LONG_LIVED_TOKEN: ${{ secrets.THREADS_LONG_LIVED_TOKEN }}
+      run: |
+        echo "THREADS_APP_ID=$THREADS_APP_ID" >> .env
+        echo "THREADS_APP_SECRET=$THREADS_APP_SECRET" >> .env
+        echo "THREADS_USER_ID=$THREADS_USER_ID" >> .env
+        echo "THREADS_LONG_LIVED_TOKEN=$THREADS_LONG_LIVED_TOKEN" >> .env
+        
+    - name: Check token health
+      id: token_check
+      run: |
+        python cli.py test
+        echo "TOKEN_VALID=$?" >> $GITHUB_OUTPUT
+        
+    - name: Create issue if token invalid
+      if: steps.token_check.outputs.TOKEN_VALID != '0'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '⚠️ Threads API Token Issue Detected',
+            body: `## Token Health Check Failed
+            
+            The weekly token health check has detected an issue with the Threads API connection.
+            
+            **Possible causes:**
+            - Long-lived token has expired
+            - API credentials are incorrect
+            - Network connectivity issues
+            - Threads API service disruption
+            
+            **Action required:**
+            1. Check the workflow logs for detailed error information
+            2. Verify GitHub Secrets are correctly set
+            3. Test token validity manually
+            4. Refresh long-lived token if expired
+            
+            **Auto-posting is currently disabled** until this issue is resolved.
+            
+            Created automatically by Token Health Monitor workflow.`,
+            labels: ['bug', 'urgent', 'api-issue']
+          });

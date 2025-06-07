@@ -1,0 +1,49 @@
+name: Auto Post to Threads
+
+on:
+  schedule:
+    # Run daily at 10:00 AM Kuala Lumpur time (2:00 AM UTC)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  auto-post:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Configure environment
+      env:
+        THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+        THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+        THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        THREADS_LONG_LIVED_TOKEN: ${{ secrets.THREADS_LONG_LIVED_TOKEN }}
+      run: |
+        echo "THREADS_APP_ID=$THREADS_APP_ID" >> .env
+        echo "THREADS_APP_SECRET=$THREADS_APP_SECRET" >> .env
+        echo "THREADS_USER_ID=$THREADS_USER_ID" >> .env
+        echo "THREADS_LONG_LIVED_TOKEN=$THREADS_LONG_LIVED_TOKEN" >> .env
+        
+    - name: Test API connection
+      run: python cli.py test
+      
+    - name: Post to Threads
+      run: python cli.py post
+      
+    - name: Upload logs
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: posting-logs
+        path: threads_poster.log

@@ -1,0 +1,41 @@
+name: Test Threads API
+
+on:
+  workflow_dispatch: # Manual trigger only
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Configure environment
+      env:
+        THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+        THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+        THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+        THREADS_LONG_LIVED_TOKEN: ${{ secrets.THREADS_LONG_LIVED_TOKEN }}
+      run: |
+        echo "THREADS_APP_ID=$THREADS_APP_ID" >> .env
+        echo "THREADS_APP_SECRET=$THREADS_APP_SECRET" >> .env
+        echo "THREADS_USER_ID=$THREADS_USER_ID" >> .env
+        echo "THREADS_LONG_LIVED_TOKEN=$THREADS_LONG_LIVED_TOKEN" >> .env
+        
+    - name: Test API connection
+      run: python cli.py test
+      
+    - name: List available posts
+      run: python cli.py list

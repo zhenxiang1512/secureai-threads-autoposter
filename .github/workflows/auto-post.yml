@@ -28,6 +28,27 @@ jobs:
       run: |
         pip install -r requirements.txt
         
+    - name: Verify secrets are available
+      run: |
+        echo "Checking if secrets are properly set..."
+        if [ -z "${{ secrets.THREADS_APP_ID }}" ]; then
+          echo "❌ THREADS_APP_ID secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.THREADS_APP_SECRET }}" ]; then
+          echo "❌ THREADS_APP_SECRET secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.THREADS_USER_ID }}" ]; then
+          echo "❌ THREADS_USER_ID secret is not set"
+          exit 1
+        fi
+        if [ -z "${{ secrets.THREADS_LONG_LIVED_TOKEN }}" ]; then
+          echo "❌ THREADS_LONG_LIVED_TOKEN secret is not set"
+          exit 1
+        fi
+        echo "✅ All secrets are properly configured"
+        
     - name: Configure environment
       env:
         THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
@@ -39,16 +60,25 @@ jobs:
         echo "THREADS_APP_SECRET=$THREADS_APP_SECRET" >> .env
         echo "THREADS_USER_ID=$THREADS_USER_ID" >> .env
         echo "THREADS_LONG_LIVED_TOKEN=$THREADS_LONG_LIVED_TOKEN" >> .env
+        echo "✅ Environment configured"
         
     - name: Test API connection
-      run: python cli.py test
+      run: |
+        echo "🧪 Testing API connection..."
+        python cli.py test
+        echo "✅ API test successful"
       
     - name: Post to Threads
-      run: python cli.py post
+      run: |
+        echo "📤 Posting to Threads..."
+        python cli.py post
+        echo "✅ Post successful"
       
     - name: Upload logs
       uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: posting-logs
-        path: threads_poster.log
+        name: posting-logs-${{ github.run_number }}
+        path: |
+          threads_poster.log
+          .env
